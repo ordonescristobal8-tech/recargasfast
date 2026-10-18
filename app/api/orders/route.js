@@ -1,54 +1,23 @@
-import { Pool } from "pg";
-import { findPackage } from "../../../public/assets/catalog.js";
-
-const pool = globalThis.__ordersPool ?? new Pool({ connectionString: process.env.DATABASE_URL });
-globalThis.__ordersPool = pool;
-
-const clean = (value, max) => (typeof value === "string" ? value.trim().slice(0, max) : "");
-
-export async function POST(request) {
-  let body;
+import { NextResponse } from 'next/server';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '5648575195';
+export async function POST(req) {
   try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "JSON inválido" }, { status: 400 });
+    const data = await req.json();
+    const orderCode = data.orderCode || `RF-${Date.now().toString().slice(-6)}`;
+    const message = `🔥 NUEVO PEDIDO RECARGAS FAST 🔥\n\n🧾 Código: ${orderCode}\n🎮 Juego: ${data.game || 'N/A'}\n🆔 ID: ${data.playerId || 'N/A'}\n📦 Paquete: ${data.packageName || 'N/A'}\n💰 Monto: ${data.amount || 'N/A'}\n🔢 Ref: ${data.reference || 'Sin ref'}\n🧾 Comprobante: ${data.hasReceipt ? 'SI' : 'NO'}\n⏰ Fecha: ${new Date().toLocaleString('es-CO')}`;
+    if (TELEGRAM_BOT_TOKEN) {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message })
+      });
+    }
+    return NextResponse.json({ ok: true, orderCode });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
-
-  const orderCode = clean(body.orderCode, 20);
-  const game = clean(body.game, 40);
-  const playerId = clean(body.playerId, 40) || null;
-  const reference = clean(body.reference, 60);
-  const pkg = findPackage(game, body.packageName, body.amount);
-
-  if (!/^\d{4}$/.test(orderCode) || !pkg || !/^M/.test(reference)) {
-    return Response.json({ error: "Datos del pedido inválidos" }, { status: 400 });
-  }
-
-  try {
-    const { rows } = await pool.query(
-      `INSERT INTO orders (order_code, game, player_id, package_name, amount_cop, reference, has_receipt)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [orderCode, game, playerId, pkg.name, pkg.price, reference, Boolean(body.hasReceipt)],
-    );
-
-    const newOrderId = rows[0].id;
-
-    const TELEGRAM_TOKEN = "8883256428:AAF-X8gHeXC6PbeNv2t1D5qn9Mjc4UdV1lY";
-    const TELEGRAM_CHAT_ID = "5648575195";
-    
-    fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: TELEGRAM_CHAT_ID,
-        text: `🔔 NUEVO PEDIDO RECARGASFAST #${newOrderId} ⚡\n\n🆔 Codigo: ${orderCode}\n🎮 Juego: ${game}\n👤 ID Jugador: ${playerId}\n📦 Paquete: ${pkg.name} - ${pkg.price} COP\n💳 Ref Nequi: ${reference}\n⏰ ${new Date().toLocaleString('es-CO')}`,
-      })
-    }).catch(e => console.error("Telegram", e));
-
-    return Response.json({ ok: true, id: newOrderId }, { status: 201 });
-
-  } catch (e) {
-    console.error(e);
-    return Response.json({ error: "Error guardando pedido: " + e.message }, { status: 500 });
-  }
+}
+export async function GET() {
+  return NextResponse.json({ ok: true, status: 'API funcionando' });
 }
