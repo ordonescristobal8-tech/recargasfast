@@ -33,7 +33,6 @@ export async function POST(request) {
 
     const newOrderId = rows[0].id;
 
-    // TELEGRAM RECARGASFAST - CRISTOBAL 5648575195
     const TELEGRAM_TOKEN = "8883256428:AAF-X8gHeXC6PbeNv2t1D5qn9Mjc4UdV1lY";
     const TELEGRAM_CHAT_ID = "5648575195";
     
@@ -42,13 +41,7 @@ export async function POST(request) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: TELEGRAM_CHAT_ID,
-        text: `🔔 NUEVO PEDIDO RECARGASFAST #${newOrderId} ⚡\n\n🆔 Codigo: ${orderCode}\n🎮 Juego: ${game}\n👤 ID Jugador: ${playerId}\n📦 Paquete: ${pkg.name} - ${pkg.price} COP\n💳 Ref Nequi: ${reference}\n📲 Tu Nequi: 3215286143\n⏰ ${new Date().toLocaleString('es-CO')}`,
-        reply_markup: {
-          inline_keyboard: [[
-            { text: "✅ APROBAR", callback_data: `aprobar_${newOrderId}` },
-            { text: "❌ RECHAZAR", callback_data: `rechazar_${newOrderId}` }
-          ]]
-        }
+        text: `🔔 NUEVO PEDIDO RECARGASFAST #${newOrderId} ⚡\n\n🆔 Codigo: ${orderCode}\n🎮 Juego: ${game}\n👤 ID Jugador: ${playerId}\n📦 Paquete: ${pkg.name} - ${pkg.price} COP\n💳 Ref Nequi: ${reference}\n⏰ ${new Date().toLocaleString('es-CO')}`,
       })
     }).catch(e => console.error("Telegram", e));
 
@@ -56,6 +49,6 @@ export async function POST(request) {
 
   } catch (e) {
     console.error(e);
-    return Response.json({ error: "Error guardando pedido" }, { status: 500 });
+    return Response.json({ error: "Error guardando pedido: " + e.message }, { status: 500 });
   }
 }
